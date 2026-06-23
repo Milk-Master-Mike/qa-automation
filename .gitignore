@@ -1,0 +1,39 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+
+# Playwright output
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Private notes and AI/agent helpers
+.private/
+.agents/
+.codex/
+AGENTS.md
+CLAUDE.md
+COACHING.md
+AI_NOTES.md
+*.private.md
+*.ai.md
+
+# Editors, logs, and operating-system files
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db
+
+# Playwright
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

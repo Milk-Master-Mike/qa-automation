@@ -7,13 +7,25 @@
     "doc": "docs",
     "test": "tests"
   },
-  "scripts": {},
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.0.0"
+  },
+  "scripts": {
+    "discover:navigation": "node scripts/discovery/homepage-navigation.mjs",
+    "test:navigation": "playwright test tests/navigation",
+    "test:navigation:chromium": "playwright test tests/navigation --project=chromium"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Milk-Master-Mike/qa-automation.git"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "devDependencies": {
-    "@playwright/test": "^1.61.0",
-    "@types/node": "^26.0.0"
-  }
+  "bugs": {
+    "url": "https://github.com/Milk-Master-Mike/qa-automation/issues"
+  },
+  "homepage": "https://github.com/Milk-Master-Mike/qa-automation#readme"
 }

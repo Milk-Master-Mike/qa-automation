@@ -1,13 +1,11 @@
-# Dependencies and build output
-node_modules/
-dist/
-build/
 
-# Playwright output
-playwright-report/
-test-results/
-blob-report/
-playwright/.cache/
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
 
 # Secrets and local configuration
 .env
@@ -25,15 +23,8 @@ AI_NOTES.md
 *.private.md
 *.ai.md
 
-# Editors, logs, and operating-system files
+# Editors and operating-system files
 .vscode/
 .idea/
-*.log
 .DS_Store
 Thumbs.db
-
-# Playwright
-/playwright-report/
-/blob-report/
-/playwright/.cache/
-/playwright/.auth/

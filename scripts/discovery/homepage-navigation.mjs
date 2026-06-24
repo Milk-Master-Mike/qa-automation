@@ -1,0 +1,201 @@
+import { chromium } from '@playwright/test';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
+const defaultHomepageUrl = 'https://the-internet.herokuapp.com/';
+const homepageUrl = process.argv[2] ?? defaultHomepageUrl;
+
+const currentFile = fileURLToPath(import.meta.url);
+const projectRoot = path.resolve(path.dirname(currentFile), '..', '..');
+const outputDirectory = path.join(projectRoot, 'tests', 'data');
+const outputFile = path.join(outputDirectory, 'homepage-navigation.ts');
+const skippedDestinationPaths = new Map([
+  ['/basic_auth', 'Requires browser authentication.'],
+  ['/digest_auth', 'Requires digest authentication.'],
+  ['/download_secure', 'Requires authentication before downloading.'],
+  ['/slow', 'Intentionally slow response.'],
+]);
+const specialTestTypes = new Map([
+  ['/basic_auth', 'basic-auth'],
+  ['/digest_auth', 'digest-auth'],
+  ['/download_secure', 'secure-download'],
+  ['/slow', 'slow-resource'],
+  ['/javascript_error', 'javascript-error'],
+  ['/nested_frames', 'nested-frames'],
+]);
+
+function classifyTestType(link) {
+  if (!link.isInternal) return 'external';
+
+  return (
+    specialTestTypes.get(new URL(link.expectedUrl).pathname) ?? 'standard'
+  );
+}
+
+async function discoverDestination(page, link) {
+  if (!link.isInternal) {
+    return {
+      discoveryStatus: 'skipped',
+      reason: 'External destinations are not visited.',
+      error: null,
+      httpStatus: null,
+      finalUrl: null,
+      title: null,
+      headings: [],
+    };
+  }
+
+  const pathname = new URL(link.expectedUrl).pathname;
+  const skipReason = skippedDestinationPaths.get(pathname);
+
+  if (skipReason) {
+    return {
+      discoveryStatus: 'skipped',
+      reason: skipReason,
+      error: null,
+      httpStatus: null,
+      finalUrl: null,
+      title: null,
+      headings: [],
+    };
+  }
+
+  try {
+    const response = await page.goto(link.expectedUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: 15_000,
+    });
+    const headings = await page.locator('h1, h2, h3, h4, h5, h6').evaluateAll(
+      (elements) =>
+        elements
+          .map((heading) => ({
+            level: heading.tagName.toLowerCase(),
+            text: (heading.textContent ?? '').replace(/\s+/g, ' ').trim(),
+            isVisible: heading.getClientRects().length > 0,
+          }))
+          .filter((heading) => heading.text.length > 0),
+    );
+
+    return {
+      discoveryStatus: 'visited',
+      reason: null,
+      error: null,
+      httpStatus: response?.status() ?? null,
+      finalUrl: page.url(),
+      title: await page.title(),
+      headings,
+    };
+  } catch (error) {
+    return {
+      discoveryStatus: 'failed',
+      reason: null,
+      error: error instanceof Error ? error.message.split('\n')[0] : String(error),
+      httpStatus: null,
+      finalUrl: null,
+      title: null,
+      headings: [],
+    };
+  }
+}
+
+try {
+  new URL(homepageUrl);
+} catch {
+  throw new Error(`Invalid homepage URL: ${homepageUrl}`);
+}
+
+const browser = await chromium.launch({ headless: true });
+
+try {
+  const page = await browser.newPage();
+  const response = await page.goto(homepageUrl, {
+    waitUntil: 'domcontentloaded',
+    timeout: 30_000,
+  });
+
+  if (!response?.ok()) {
+    throw new Error(
+      `Homepage returned HTTP ${response?.status() ?? 'unknown'}.`,
+    );
+  }
+
+  const navigationLinks = await page
+    .locator('a[href]')
+    .evaluateAll((elements) => {
+      const normalize = (value) =>
+        (value ?? '').replace(/\s+/g, ' ').trim();
+
+      return elements.map((link, index) => {
+        const rawHref = link.getAttribute('href') ?? '';
+        const resolvedUrl = new URL(rawHref, window.location.href);
+        const name =
+          normalize(link.textContent) ||
+          normalize(link.getAttribute('aria-label')) ||
+          normalize(link.querySelector('img')?.getAttribute('alt')) ||
+          normalize(link.getAttribute('title')) ||
+          '(unnamed link)';
+
+        return {
+          number: index + 1,
+          name,
+          rawHref,
+          expectedUrl: resolvedUrl.href,
+          path: `${resolvedUrl.pathname}${resolvedUrl.search}${resolvedUrl.hash}`,
+          isInternal: resolvedUrl.origin === window.location.origin,
+          isVisible: link.getClientRects().length > 0,
+          opensNewTab: link.target === '_blank',
+        };
+      });
+    });
+
+  const destinationPage = await browser.newPage();
+  const navigationWithDestinationData = [];
+
+  for (const link of navigationLinks) {
+    const classifiedLink = {
+      ...link,
+      testType: classifyTestType(link),
+    };
+
+    navigationWithDestinationData.push({
+      ...classifiedLink,
+      destination: await discoverDestination(destinationPage, classifiedLink),
+    });
+  }
+
+  const fileContents = `// Generated by scripts/discovery/homepage-navigation.mjs.
+// Review this discovery data before using it as a test expectation.
+
+export const homepageUrl = ${JSON.stringify(page.url())};
+
+export const homepageNavigation = ${JSON.stringify(navigationWithDestinationData, null, 2)} as const;
+
+export type HomepageNavigationLink = (typeof homepageNavigation)[number];
+`;
+
+  await mkdir(outputDirectory, { recursive: true });
+  await writeFile(outputFile, fileContents, 'utf8');
+
+  const internalCount = navigationLinks.filter((link) => link.isInternal).length;
+  const visitedCount = navigationWithDestinationData.filter(
+    (link) => link.destination.discoveryStatus === 'visited',
+  ).length;
+  const skippedCount = navigationWithDestinationData.filter(
+    (link) => link.destination.discoveryStatus === 'skipped',
+  ).length;
+  const failedCount = navigationWithDestinationData.filter(
+    (link) => link.destination.discoveryStatus === 'failed',
+  ).length;
+
+  console.log(`Homepage: ${page.url()}`);
+  console.log(`Navigation links found: ${navigationLinks.length}`);
+  console.log(`Internal links: ${internalCount}`);
+  console.log(`External links: ${navigationLinks.length - internalCount}`);
+  console.log(`Destinations visited: ${visitedCount}`);
+  console.log(`Destinations skipped: ${skippedCount}`);
+  console.log(`Destination failures: ${failedCount}`);
+  console.log(`Wrote ${path.relative(projectRoot, outputFile)}`);
+} finally {
+  await browser.close();
+}

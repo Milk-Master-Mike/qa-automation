@@ -4,21 +4,17 @@ This project is a Playwright test automation portfolio built against
 [The Internet](https://the-internet.herokuapp.com/), a public website designed
 for safe browser-automation practice.
 
+> **Status:** Active build. Chromium navigation coverage is complete; cross-browser
+> and feature-level behavior coverage are in progress.
+
 The project begins with automated site discovery, converts the discovered
 inventory into human-reviewed expectations, and assigns each feature the type
 of test that matches its behavior. The end goal is 100% automated coverage of
 the documented site inventory across Chromium, Firefox, and WebKit.
 
-## AI-assisted development
-
-This is an AI-assisted learning project. AI tools are used for pair programming,
-debugging support, code review, and explaining unfamiliar concepts. Generated
-suggestions are reviewed and tested before they are accepted into the project.
-
-The project owner remains responsible for understanding the test strategy,
-running and interpreting the tests, making scope decisions, and explaining the
-implementation. The goal is to demonstrate practical QA judgment and growing
-automation skill, not to present AI-generated work as unaided work.
+Designed and built by **Michael Weeks Jr.** to demonstrate test discovery,
+human-reviewed expectations, resilient assertions, and responsible automation
+against a public practice application.
 
 ## Current status
 
@@ -187,6 +183,17 @@ instead of silently rewriting the expected results.
 6. Add status-code, redirect, JavaScript-error, and slow-resource assertions.
 7. Add accessibility checks to critical user journeys.
 8. Publish a final coverage matrix mapping every discovered feature to tests.
+
+## AI-assisted development
+
+This is an AI-assisted learning project. AI tools are used for pair programming,
+debugging support, code review, and explaining unfamiliar concepts. Generated
+suggestions are reviewed and tested before they are accepted into the project.
+
+The project owner remains responsible for understanding the test strategy,
+running and interpreting the tests, making scope decisions, and explaining the
+implementation. The goal is to demonstrate practical QA judgment and growing
+automation skill, not to present AI-generated work as unaided work.
 
 ## Safety and public-repository rules
 
